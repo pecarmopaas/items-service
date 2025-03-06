@@ -1,0 +1,65 @@
+name: Build and Deploy
+
+on:
+  push:
+    branches:
+      - dev
+
+env:
+  APP_NAME: ${{ github.event.repository.name }}
+  NAMESPACE: ${{ github.event.repository.name }}-ns
+  ACR_REGISTRY: acrneudevall.azurecr.io 
+  ACR_NAME : acrneudevall
+  ACR_IMAGE_TAG: dev-${{ github.run_number }}
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Log in to Azure
+        uses: azure/login@v1
+        with:
+          creds: |
+            {
+              "clientId": "${{ secrets.ARM_CLIENT_ID }}",
+              "clientSecret": "${{ secrets.ARM_CLIENT_SECRET }}",
+              "subscriptionId": "${{ secrets.ARM_SUBSCRIPTION_ID }}",
+              "tenantId": "${{ secrets.ARM_TENANT_ID }}"
+            }
+
+      - name: Get AKS credentials
+        run: az aks get-credentials --name aks-neu-dev --resource-group rg-neu-dev
+
+      - name: Create namespace if it doesn’t exist
+        run: |
+          if ! kubectl get namespace ${{ env.NAMESPACE }} &> /dev/null; then
+            echo "Namespace ${{ env.NAMESPACE }} does not exist, creating it."
+            kubectl create namespace ${{ env.NAMESPACE }}
+          fi
+
+      - name: Log in to Azure Container Registry
+        run: |
+          ACR_USERNAME=$(az acr credential show --name ${{ env.ACR_NAME }} --query username --output tsv)
+          ACR_PASSWORD=$(az acr credential show --name ${{ env.ACR_NAME }} --query passwords[0].value --output tsv)
+          echo "$ACR_PASSWORD" | docker login ${{ env.ACR_REGISTRY }} -u "$ACR_USERNAME" --password-stdin
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v4
+        with:
+          context: .
+          file: Dockerfile
+          tags: |
+            ${{ env.ACR_REGISTRY }}/${{ env.APP_NAME }}:dev
+            ${{ env.ACR_REGISTRY }}/${{ env.APP_NAME }}:${{ env.ACR_IMAGE_TAG }}
+          push: true
+
+      - name: Deploy to AKS
+        run: |
+          kubectl apply -f deployment.yaml
+
+      - name: Restart deployment to ensure new image is used
+        run: |
+          kubectl rollout restart deployment ${{ env.APP_NAME }} -n ${{ env.NAMESPACE }}

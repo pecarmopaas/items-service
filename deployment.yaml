@@ -1,0 +1,58 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: items-service
+  namespace: items-service-ns
+  labels:
+    app: items-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: items-service
+  template:
+    metadata:
+      labels:
+        app: items-service
+    spec:
+      containers:
+      - name: items-service
+        image: acrneudevall.azurecr.io/items-service:dev
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 8000
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: items-service
+  namespace: items-service-ns  
+spec:
+  selector:
+    app: items-service
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 8000
+  type: ClusterIP
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: items-service-ingress
+  namespace: items-service-ns
+  annotations:
+    kubernetes.io/ingress.class: azure/application-gateway
+spec:
+  rules:
+  - host: items.pecarmo.pt
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: items-service
+            port:
+              number: 8000
