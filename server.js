@@ -9,15 +9,15 @@ app.get('/', (req, res) => {
   res.send('API is running');
 });
 
-app.get('/users', (req, res) => {
+app.get('/items', (req, res) => {
   res.send('All items');
 });
 
-app.post('/users', (req, res) => {
+app.post('/items', (req, res) => {
   res.send('Item was added');
 });
 
-app.delete('/users', (req, res) => {
+app.delete('/items', (req, res) => {
   res.send('Item was deleted');
 });
 
