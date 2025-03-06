@@ -46,7 +46,7 @@ metadata:
     kubernetes.io/ingress.class: azure/application-gateway
 spec:
   rules:
-  - host: items.pecarmo.pt
+  - host: items.paas.pecarmo.pt
     http:
       paths:
       - path: /
