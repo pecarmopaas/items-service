@@ -10,7 +10,7 @@ app.get('/', (req, res) => {
 });
 
 app.get('/items', (req, res) => {
-  res.send('All items');
+  res.send('All items.');
 });
 
 app.post('/items', (req, res) => {
